@@ -12,9 +12,13 @@
 #define Max 5
 #define MAXSIZE 1024
 
-/*定义全局变量*/
 int fdt[Max]={0};
 char mes[1024];
+char str[]=":已進入遊戲聊天室\n";
+char namelist[600];
+char callrecord[]="history";
+char inhis[]="已進入\n";
+char outhis[]="已登出\n";
 
 /**/
 
@@ -25,6 +29,7 @@ void *pthread_service(void* sfd)
     {
         int numbytes;
         int i;
+	char tmp[100];
         numbytes=recv(fd,mes,MAXSIZE,0);
         if(numbytes<=0){
             for(i=0;i<Max;i++){
@@ -50,10 +55,34 @@ void *pthread_service(void* sfd)
 /**/
 int SendToClient(int fd,char* buf,int Size)
 {
-    int i;
+        int i;
+	char tmp[100];
+	if(strstr(buf,"exit") != NULL){
+		printf("lalala:%s\n",buf);
+	    for(i = 0; buf[i] != ':'; i++){
+	    tmp[i] = buf[i];
+	    printf("%c\n",buf[i]);
+	    }
+	    tmp[i] = ' ';
+	    strcat(namelist,tmp);
+	    strcat(namelist,outhis);
+	}
+	if(strstr(buf,str) != NULL){
+	for(i = 0; buf[i] != ':'; i++){
+	tmp[i] = buf[i];
+	printf("%c\n",buf[i]);
+	}
+	tmp[i] = ' ';
+	strcat(namelist,tmp);
+	strcat(namelist,inhis);
+	}
     for(i=0;i<Max;i++){
         printf("fdt[%d]=%d\n",i,fdt[i]);
-        if((fdt[i]!=0)&&(fdt[i]!=fd)){
+	if(fdt[i] == fd && strstr(buf,callrecord) != NULL){
+            send(fdt[i],namelist,strlen(namelist),0);
+            printf("send message to %d\n",fdt[i]);
+	}
+        else if((fdt[i]!=0)&&(fdt[i]!=fd)){
             send(fdt[i],buf,Size,0);
             printf("send message to %d\n",fdt[i]);
         }
@@ -74,7 +103,7 @@ int  main()
     sin_size=sizeof(struct sockaddr_in);
     int number=0;
     int fd;
-
+    strcat(namelist,"遊戲聊天室歷史紀錄:\n");
 
     if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
     {

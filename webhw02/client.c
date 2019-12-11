@@ -1,4 +1,4 @@
-﻿#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <strings.h>
@@ -13,6 +13,7 @@
 #define game "ooxxinvite"
 #define in "join"
 #define out "disagree"
+#define record "history"
 char sendbuf[1024];
 char recvbuf[1024];
 char name[100];
@@ -23,9 +24,12 @@ int player[2] = {0,0};
 int counter = 0;
 int painter = -1;
 int invitei = 0;
+int round = 0;
+int repeat[10] = {0};
 char rule01[]="邀請人的方式:<<ooxxinvite>> <<name>>";
 char rule02[]="接受邀請的方式:<<join>> <<name>>";
 char rule03[]="拒絕邀請的方式:<<disagree>> <<name>>";
+char rule00[]="查詢人員歷史紀錄:<<history>>";
 int gamecheckwin(int id)
 {
 	if(id != painter)printf("error check\n");
@@ -136,6 +140,7 @@ void blockit(int id,int flag)
 	if(player[0] == getpid())me = 1;
 	if(player[1] == getpid())me = 0;
 	}
+	repeat[id] = 1;
 	for(i = 0; i < 3; i++)
 		for(j = 0; j < 3; j++){
 			stop++;
@@ -180,8 +185,11 @@ void tableset(void)
 {
 	int i,j;
 	for(i = 0; i < 3; i++)
-		for(j = 0; j < 3; j++)
+		for(j = 0; j < 3; j++){
 			gametable[i][j] = -1;
+		}
+	for(i = 0; i <= 9; i++)
+			repeat[i] = 0;
 	counter = 0;
 	painter = -1;
 	invitei = 0;
@@ -226,6 +234,8 @@ int i;
 			}
 			printf("%s 拒絕你的邀請\n",catchname);
 		}
+		if(strstr(recvbuf,record) != NULL)
+		printf("%s",recvbuf);
 	}
 	else printf("%s",recvbuf);
 	if(gamemode == 1){
@@ -234,6 +244,7 @@ int i;
 		id = charcmp(3);
 		if(id > 0)
 		blockit(id,1);
+		round = 0;
 	}
 	if(id > 0)
 	printtable();
@@ -278,12 +289,12 @@ int i;
     }
 
     printf("connect success\n");
-    char str[]="已進入遊戲聊天室\n";
+    char str[]=":已進入遊戲聊天室\n";
     printf("请输入姓名：");
     fgets(name,sizeof(name),stdin);
     send(fd,name,(strlen(name)-1),0);
     send(fd,str,(strlen(str)),0);
-    printf("%s\n%s\n%s\n",rule01,rule02,rule03);
+    printf("%s\n%s\n%s\n%s\n",rule00,rule01,rule02,rule03);
 
     pthread_t tid;
     pthread_create(&tid,NULL,pthread_recv,NULL);
@@ -293,9 +304,12 @@ int i;
         memset(sendbuf,0,sizeof(sendbuf));
         fgets(sendbuf,sizeof(sendbuf),stdin);
         if(strstr(sendbuf,"exit")!=NULL){
-            memset(sendbuf,0,sizeof(sendbuf));
             printf("您已退出\n");
-            send(fd,sendbuf,(strlen(sendbuf)),0);
+            send(fd,name,(strlen(name)-1),0);
+            send(fd,":",1,0);
+	    send(fd,sendbuf,(strlen(sendbuf)),0);
+	    
+            memset(sendbuf,0,sizeof(sendbuf));
             break;
         }
 	if(charcmp(2) != 0 && invitei == 0){
@@ -305,6 +319,15 @@ int i;
 	if(gamemode){
 		int id = charcmp(2);
 		if(id != 0){
+		if(repeat[id] == 1){
+		printf("you can not put there\n");
+		continue;
+		}
+		if(round == 1){
+		printf("not your turn\n");
+		continue;
+		}
+		round = 1;
 		blockit(id,0);
 		printtable();
 		}
